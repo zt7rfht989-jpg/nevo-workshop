@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nevo Workshop | 3D Toyota Studio</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { margin: 0; background-color: #111; color: white; font-family: 'Inter', sans-serif; overflow: hidden; }
+        canvas { display: block; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .slider-custom { appearance: none; background: #333; height: 5px; border-radius: 5px; outline: none; opacity: 0.7; transition: opacity .2s; }
+        .slider-custom:hover { opacity: 1; }
+        .slider-custom::-webkit-slider-thumb { appearance: none; width: 15px; height: 15px; border-radius: 50%; background: #e53e3e; cursor: pointer; border: 2px solid white; }
+    </style>
+</head>
+<body class="bg-black text-white antialiased">
+
+<!-- Main App UI Container -->
+<div class="fixed inset-0 grid grid-rows-[auto,1fr] z-10 p-4 gap-4 pointer-events-none">
+    
+    <!-- Top Header & Scene Controls -->
+    <div class="flex items-center justify-between p-4 bg-zinc-900/80 backdrop-blur-md border border-zinc-800 rounded-xl pointer-events-auto">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-red-600 rounded-xl flex items-center justify-center font-bold text-white text-xl">N</div>
+            <div>
+                <h1 class="text-2xl font-black tracking-tight text-white">NEVO <span class="bg-red-600 px-2 py-0.5 rounded text-xs font-mono">WORKSHOP</span></h1>
+                <p class="text-xs text-zinc-400">J120 Land Cruiser Prado & Corolla Altis Studio</p>
+            </div>
+        </div>
+        
+        <div class="flex gap-2">
+            <button class="bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 text-xs rounded-lg flex items-center gap-1.5" id="viewFront">Front</button>
+            <button class="bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 text-xs rounded-lg flex items-center gap-1.5" id="viewSide">Side</button>
+            <button class="bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 text-xs rounded-lg flex items-center gap-1.5" id="viewReset">Reset</button>
+        </div>
+    </div>
+
+    <!-- Right Sidebar and Main Render View -->
+    <div class="grid grid-cols-[1fr,360px] gap-4">
+        
+        <!-- MAIN RENDER AREA (Left) -->
+        <div id="threejs-canvas" class="bg-zinc-950 border border-zinc-900 rounded-xl pointer-events-auto relative">
+            <div class="absolute top-3 left-3 flex items-center gap-2 bg-black/50 p-2 rounded-full border border-zinc-800">
+                <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                <span class="text-xs font-mono text-green-400">Nevo Studio Active (WebGL 60FPS)</span>
+            </div>
+        </div>
+
+        <!-- CONTROL SIDEBAR (Right) -->
+        <div class="bg-zinc-900/80 backdrop-blur-md border border-zinc-800 rounded-xl p-5 pointer-events-auto flex flex-col gap-5 overflow-y-auto">
+            
+            <!-- MODEL INPUT AND BRIDGE SECTION -->
+            <div class="border-b border-zinc-800 pb-5">
+                <h2 class="text-xl font-bold flex items-center gap-2 text-red-500 mb-3">STEP 1: LOAD 3D MODEL</h2>
+                <p class="text-xs text-zinc-400 mb-4">Upload your high-detail .obj or .glb asset file to render your vehicle models inside Nevo Workshop.</p>
+                
+                <div class="border-2 border-dashed border-zinc-700 rounded-xl p-6 text-center hover:border-red-600 hover:bg-zinc-800 cursor-pointer transition">
+                    <input type="file" id="model-file-input" class="hidden" accept=".obj, .glb, .gltf">
+                    <label for="model-file-input" class="cursor-pointer">
+                        <span class="font-bold text-white block text-sm">Tap to Upload 3D File (.glb/.obj)</span>
+                        <span class="text-xs text-zinc-400 block mt-1">Prado & Corolla Meshes</span>
+                    </label>
+                </div>
+                <p id="file-status" class="text-xs text-zinc-500 font-mono mt-2 italic text-center">Using procedural geometry fallback...</p>
+            </div>
+
+            <!-- TABS NAVIGATION -->
+            <div class="flex gap-1 border-b border-zinc-800 pb-2">
+                <button class="tab-btn active px-3 py-1.5 text-sm rounded-lg bg-red-600/10 text-red-500 border border-red-900" data-tab="models">Models</button>
+                <button class="tab-btn px-3 py-1.5 text-sm rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300" data-tab="paints">Paints</button>
+                <button class="tab-btn px-3 py-1.5 text-sm rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300" data-tab="mods">Mods</button>
+                <button class="tab-btn px-3 py-1.5 text-sm rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300" data-tab="guide">Guide</button>
+            </div>
+
+            <!-- TAB 1: MODELS SECTION -->
+            <div id="models" class="tab-content active flex flex-col gap-3">
+                <div class="p-4 border border-zinc-800 rounded-xl bg-zinc-950">
+                    <h3 class="text-xs font-mono text-red-500 uppercase tracking-widest mb-1">NEVO WORKSHOP BAY</h3>
+                    <p class="text-xl font-black" id="current-car-title">Land Cruiser Prado 2008</p>
+                    <p class="text-xs text-zinc-400" id="current-car-specs">4.
